@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dama - Multiplayer in Tempo Reale</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.3/socket.io.js"></script>
+    <style>
+        .container {
+            display: grid;
+            grid-template-columns: repeat(10, 50px);
+            grid-template-rows: repeat(10, 50px);
+        }
+        .square {
+            border: 1px solid black;
+            position: relative;
+        }
+        .black {
+            background-color: #000;
+        }
+        .white {
+            background-color: #fff;
+        }
+        .pink, .purple {
+            border-radius: 50%;
+            width: 80%;
+            height: 80%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+        }
+        .pink {
+            background-color: #FF69B4;
+        }
+        .purple {
+            background-color: #800080;
+        }
+        #colorChoice {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        .button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="colorChoice">
+        <h1>Scegli il colore delle pedine</h1>
+        <button class="button" onclick="chooseColor('pink')">Rosa</button>
+        <button class="button" onclick="chooseColor('purple')">Viola</button>
+    </div>
+    <div id="gameContainer" style="display: none;">
+        <div id="gameBoard" class="container">
+            <!-- Il tabellone di gioco sarà generato dinamicamente qui -->
+        </div>
+        <button id="resetButton" class="button" style="display: none;" onclick="resetGame()">Resetta il Gioco</button>
+    </div>
+
+    <script>
+        var socket = io('https://damariccidelos.glitch.me');
+        let selectedPiece = null;
+        let isPlayerTurn = false;
+        let playerColor = null;
+
+        function createItalianDraughtsboard() {
+            const container = document.getElementById('gameBoard');
+            container.innerHTML = '';
+
+            for (let row = 0; row < 10; row++) {
+                for (let col = 0; col < 10; col++) {
+                    const square = document.createElement('div');
+                    square.classList.add('square');
+                    if ((row + col) % 2 === 0) {
+                        square.classList.add('black');
+                    } else {
+                        square.classList.add('white');
+                    }
+                    square.setAttribute('data-row', row);
+                    square.setAttribute('data-col', col);
+                    square.addEventListener('click', onSquareClick);
+
+                    container.appendChild(square);
+                }
+            }
+        }
+
+        function updateBoard(state) {
+            const container = document.getElementById('gameBoard');
+            container.innerHTML = '';
+
+            state.board.forEach((row, rowIndex) => {
+                row.forEach((cell, colIndex) => {
+                    const square = document.createElement('div');
+                    square.classList.add('square');
+                    if ((rowIndex + colIndex) % 2 === 0) {
+                        square.classList.add('black');
+                    } else {
+                        square.classList.add('white');
+                    }
+                    square.setAttribute('data-row', rowIndex);
+                    square.setAttribute('data-col', colIndex);
+                    square.addEventListener('click', onSquareClick);
+
+                    if (cell === 'pink' || cell === 'purple') {
+                        const piece = document.createElement('div');
+                        piece.classList.add(cell);
+                        piece.addEventListener('click', onPieceClick);
+                        square.appendChild(piece);
+                    }
+
+                    container.appendChild(square);
+                });
+            });
+        }
+
+        function onSquareClick(event) {
+            const square = event.currentTarget;
+            const row = parseInt(square.getAttribute('data-row'));
+            const col = parseInt(square.getAttribute('data-col'));
+
+            if (selectedPiece) {
+                const from = selectedPiece;
+                const to = { row, col };
+
+                if ((to.row + to.col) % 2 === 0 && !square.firstChild) {
+                    // Invia la mossa al server
+                    socket.emit('move', { from, to });
+                    selectedPiece = null;
+                }
+            }
+        }
+
+        function onPieceClick(event) {
+            const piece = event.target;
+            const pieceColor = piece.classList.contains('pink') ? 'pink' : 'purple';
+            const square = piece.parentElement;
+            const row = parseInt(square.getAttribute('data-row'));
+            const col = parseInt(square.getAttribute('data-col'));
+
+            if (isPlayerTurn && playerColor === pieceColor) {
+                selectedPiece = { row, col };
+            }
+        }
+
+        function chooseColor(color) {
+            playerColor = color;
+            socket.emit('chooseColor', color);
+        }
+
+        function resetGame() {
+            console.log('Reset button clicked');
+            socket.emit('resetGame');
+        }
+
+        socket.on('waitingForOpponent', () => {
+            alert('Aspettando l\'altro giocatore...');
+        });
+
+        socket.on('gameStart', () => {
+            document.getElementById('colorChoice').style.display = 'none';
+            document.getElementById('gameContainer').style.display = 'block';
+            document.getElementById('resetButton').style.display = 'block';
+            createItalianDraughtsboard();
+        });
+
+        socket.on('gameState', (state) => {
+            updateBoard(state);
+            isPlayerTurn = state.currentPlayer === playerColor;
+        });
+
+        socket.on('yourTurn', (color) => {
+            playerColor = color;
+            isPlayerTurn = playerColor === color;
+        });
+    </script>
+</body>
+</html>
