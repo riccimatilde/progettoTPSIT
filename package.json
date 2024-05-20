@@ -1,0 +1,25 @@
+{
+  "name": "gioco-dama",
+  "version": "1.0.0",
+  "description": "Un'applicazione per giocare alla dama 10x10 in tempo reale",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "author": "Il tuo nome",
+  "license": "MIT",
+  "keywords": [
+    "node",
+    "socket.io",
+    "express",
+    "damiera",
+    "gioco della dama"
+  ]
+}
