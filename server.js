@@ -14,7 +14,11 @@ app.get('/', (req, res) => {
 
 let gameState = {
     board: Array(10).fill().map(() => Array(10).fill(null)),
-    currentPlayer: 'pink'
+    currentPlayer: 'pink',
+    scores: {
+        pink: 0,
+        purple: 0
+    }
 };
 
 const initializeBoard = () => {
@@ -31,6 +35,27 @@ const initializeBoard = () => {
         }
     }
     gameState.currentPlayer = 'pink';
+    gameState.scores = { pink: 0, purple: 0 };
+};
+
+const checkEndGame = () => {
+    let pinkCount = 0;
+    let purpleCount = 0;
+    gameState.board.forEach(row => {
+        row.forEach(cell => {
+            if (cell === 'pink') pinkCount++;
+            if (cell === 'purple') purpleCount++;
+        });
+    });
+
+    if (pinkCount === 0) {
+        io.emit('gameEnd', { winner: 'purple', loser: 'pink' });
+        return true;
+    } else if (purpleCount === 0) {
+        io.emit('gameEnd', { winner: 'pink', loser: 'purple' });
+        return true;
+    }
+    return false;
 };
 
 initializeBoard();
@@ -74,8 +99,12 @@ io.on('connection', (socket) => {
 
         const { from, to } = move;
         const piece = gameState.board[from.row][from.col];
-        if (piece && (to.row + to.col) % 2 === 0 && !gameState.board[to.row][to.col]) {
-            // Verifica se la mossa è una cattura
+
+        // Verifica la direzione del movimento
+        const isValidMove = (piece === 'pink' && to.row > from.row) || 
+                            (piece === 'purple' && to.row < from.row);
+
+        if (piece && isValidMove && (to.row + to.col) % 2 === 0 && !gameState.board[to.row][to.col]) {
             const middleRow = (from.row + to.row) / 2;
             const middleCol = (from.col + to.col) / 2;
 
@@ -83,8 +112,8 @@ io.on('connection', (socket) => {
                 gameState.board[middleRow][middleCol] &&
                 gameState.board[middleRow][middleCol] !== piece) {
 
-                // Rimuovi la pedina catturata
                 gameState.board[middleRow][middleCol] = null;
+                gameState.scores[currentPlayer]++;
             }
 
             gameState.board[from.row][from.col] = null;
@@ -93,11 +122,14 @@ io.on('connection', (socket) => {
             gameState.currentPlayer = currentPlayer === 'pink' ? 'purple' : 'pink';
 
             io.emit('gameState', gameState);
+
+            if (checkEndGame()) {
+                return;
+            }
         }
     });
 
     socket.on('resetGame', () => {
-        console.log('Resetting game...');
         initializeBoard();
         io.emit('gameState', gameState);
     });
