@@ -49,6 +49,46 @@
             margin: 10px;
             font-size: 20px;
             cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #f0f0f0;
+            color: #000;
+        }
+        #scoreBoard {
+            display: flex;
+            align-items: center;
+            margin-left: 20px;
+            padding: 10px 20px;
+            font-size: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        #scoreBoard span {
+            margin: 0 10px;
+            font-weight: bold;
+        }
+        #pinkScore {
+            color: #FF69B4;
+        }
+        #purpleScore {
+            color: #800080;
+        }
+        #winnerLoser {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .winner, .loser {
+            display: flex;
+            align-items: center;
+            margin: 10px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .winner img, .loser img {
+            margin-left: 10px;
         }
     </style>
 </head>
@@ -59,13 +99,20 @@
         <button class="button" onclick="chooseColor('purple')">Viola</button>
     </div>
     <div id="gameContainer" style="display: none;">
-      <h1>
-        Dama Occidentale
-      </h1>
+        <h1>Dama Occidentale</h1>
         <div id="gameBoard" class="container">
             <!-- Il tabellone di gioco sarà generato dinamicamente qui -->
         </div>
-        <button id="resetButton" class="button" style="display: none;" onclick="resetGame()">Resetta il Gioco</button>
+        <div id="controls" style="display: flex; align-items: center; margin-top: 20px;">
+            <button id="resetButton" class="button" style="display: none;" onclick="resetGame()">Resetta il Gioco</button>
+            <div id="scoreBoard" style="margin-left: 20px;">
+                <span id="pinkScore">Rosa: 0</span> | <span id="purpleScore">Viola: 0</span>
+            </div>
+        </div>
+        <div id="winnerLoser" style="display: none;">
+            <div id="winner" class="winner"></div>
+            <div id="loser" class="loser"></div>
+        </div>
     </div>
 
     <script>
@@ -73,6 +120,8 @@
         let selectedPiece = null;
         let isPlayerTurn = false;
         let playerColor = null;
+        let pinkScore = 0;
+        let purpleScore = 0;
 
         function createItalianDraughtsboard() {
             const container = document.getElementById('gameBoard');
@@ -123,6 +172,11 @@
                     container.appendChild(square);
                 });
             });
+
+            pinkScore = state.scores.pink;
+            purpleScore = state.scores.purple;
+            document.getElementById('pinkScore').innerText = `Rosa: ${pinkScore}`;
+            document.getElementById('purpleScore').innerText = `Viola: ${purpleScore}`;
         }
 
         function onSquareClick(event) {
@@ -135,7 +189,6 @@
                 const to = { row, col };
 
                 if ((to.row + to.col) % 2 === 0 && !square.firstChild) {
-                    // Invia la mossa al server
                     socket.emit('move', { from, to });
                     selectedPiece = null;
                 }
@@ -160,7 +213,6 @@
         }
 
         function resetGame() {
-            console.log('Reset button clicked');
             socket.emit('resetGame');
         }
 
@@ -172,6 +224,8 @@
             document.getElementById('colorChoice').style.display = 'none';
             document.getElementById('gameContainer').style.display = 'block';
             document.getElementById('resetButton').style.display = 'block';
+            document.getElementById('scoreBoard').style.display = 'block';
+            document.getElementById('winnerLoser').style.display = 'none';
             createItalianDraughtsboard();
         });
 
@@ -184,11 +238,18 @@
             playerColor = color;
             isPlayerTurn = playerColor === color;
         });
+
+        socket.on('gameEnd', (result) => {
+            document.getElementById('winnerLoser').style.display = 'block';
+            document.getElementById('winner').innerHTML = `Vincitore: ${result.winner} <img src="${result.winner === 'pink' ? 'https://img.icons8.com/?size=100&id=iMOL8BuPplly&format=png&color=000000' : 'https://img.icons8.com/?size=100&id=iMOL8BuPplly&format=png&color=000000'}" alt="Winner Icon">`;
+            document.getElementById('loser').innerHTML = `Perdente: ${result.loser} <img src="${result.loser === 'pink' ? 'https://img.icons8.com/?size=100&id=xz9FgM6BSfU3&format=png&color=000000' : 'https://img.icons8.com/?size=100&id=xz9FgM6BSfU3&format=png&color=000000'}" alt="Loser Icon">`;
+        });
     </script>
 </body>
-  <footer>
+<footer>
     <div class="footer-content">
-        <p>&copy; 2024 Dama.Occidentale <br>Ricci Matile - Santana Luz </p>
+        <p>&copy; 2024 Dama Occidentale<br>Ricci Matile - Santana Luz</p>
     </div>
 </footer>
 </html>
+
